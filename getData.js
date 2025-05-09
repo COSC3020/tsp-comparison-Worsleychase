@@ -115,10 +115,11 @@ function runExperimentHeldKarp() {
     const startTime = Date.now();
     const TWO_HOURS = 2 * 60 * 60 * 1000; // milliseconds!
 
-    let n = 4;
+    let n = 2;
     while ((Date.now() - startTime) < TWO_HOURS) {
         const matrixFile = path.join(matrixDir, `n${n}.json`);
         if (!fs.existsSync(matrixFile)) break;
+	if (n > 20) break;
         const distances = JSON.parse(fs.readFileSync(matrixFile));
         const iterStart = Date.now();
         const tourLength = tsp_hk(distances);
@@ -138,11 +139,16 @@ function runExperimentLocalSearch() {
     const results = ['n,time,tourLength'];
     const startTime = Date.now();
     const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const nMax = 25000; 
 
-    let n = 4;
-    while ((Date.now() - startTime) < TWO_HOURS) {
+    let n = 2;
+    while ((Date.now() - startTime) < TWO_HOURS && n <= nMax) {
         const matrixFile = path.join(matrixDir, `n${n}.json`);
-        if (!fs.existsSync(matrixFile)) break;
+        if (!fs.existsSync(matrixFile)) {
+            console.log(`Matrix file not found for n=${n}. Stopping.`);
+            break;
+        }
+
         const distances = JSON.parse(fs.readFileSync(matrixFile));
         const iterStart = Date.now();
         const tourLength = tsp_ls(distances);
@@ -150,10 +156,28 @@ function runExperimentLocalSearch() {
 
         results.push(`${n},${iterTime},${tourLength}`);
         console.log(`LS: n=${n}, time=${iterTime}ms, length=${tourLength}`);
-        n++;
+
+        // Adaptive step logic
+        if (n < 50) {
+            n += 1;
+        } else if (n < 100) {
+            n += 3;
+        } else if (n < 500) {
+            n += 5;
+        } else if (n < 1000) {
+            n += 10;
+        } else if (n < 3000) {
+            n += 25;
+        } else if (n < 6000) {
+            n += 50;
+        } else {
+            n += 100;
+        }
     }
+
     fs.writeFileSync('ls_results.csv', results.join('\n'));
 }
+
 
 // Run experiments
 console.log("Running Held-Karp experiment...");
